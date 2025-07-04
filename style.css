@@ -40,6 +40,13 @@ header {
   flex: 1;
 }
 
+#info {
+  padding: 0.5rem 1rem;
+  background: #fff;
+  border-top: 1px solid #ccc;
+}
+
+
 @media (max-width: 600px) {
   #searchForm {
     flex-direction: column;

@@ -7,8 +7,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap'
 }).addTo(map);
 
-// Couche des parcelles cadastrales (source data.gouv.fr)
-const cadastre = L.tileLayer('https://cadastre.openstreetmap.fr/tiles/parcelles/{z}/{x}/{y}.png', {
+
+// Couche des parcelles cadastrales
+L.tileLayer('https://cadastre.openstreetmap.fr/tiles/parcelles/{z}/{x}/{y}.png', {
+
   maxZoom: 20,
   opacity: 0.7,
   attribution: '&copy; Cadastre'
@@ -17,7 +19,13 @@ const cadastre = L.tileLayer('https://cadastre.openstreetmap.fr/tiles/parcelles/
 const form = document.getElementById('searchForm');
 const input = document.getElementById('addressInput');
 
-// Recherche d'adresse et affichage de la parcelle correspondante
+const info = document.getElementById('info');
+
+let marker;
+let parcelLayer;
+
+// Recherche d'adresse
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const query = encodeURIComponent(input.value);
@@ -30,26 +38,58 @@ form.addEventListener('submit', async (e) => {
       alert('Adresse introuvable');
       return;
     }
-    const [lng, lat] = data.features[0].geometry.coordinates;
-    const label = data.features[0].properties.label;
 
+    const feature = data.features[0];
+    const [lng, lat] = feature.geometry.coordinates;
+    const label = feature.properties.label;
+
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([lat, lng]).addTo(map).bindPopup(label).openPopup();
     map.setView([lat, lng], 18);
-    L.marker([lat, lng]).addTo(map).bindPopup(label).openPopup();
-
-    // Récupération de la parcelle contenant le point
-    const parcelUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?lat=${lat}&lon=${lng}`;
-    const pResp = await fetch(parcelUrl);
-    const pData = await pResp.json();
-    if (pData.features && pData.features.length) {
-      const parcel = pData.features[0];
-      const ref = parcel.properties.id;
-      const geom = L.geoJSON(parcel, {
-        style: { color: '#ff0000', weight: 2 }
-      }).addTo(map);
-      geom.bindPopup(`Parcelle : ${ref}`).openPopup();
-    }
   } catch (err) {
     console.error(err);
     alert('Erreur lors de la recherche');
+  }
+});
+
+// Sélection d'une parcelle au clic
+map.on('click', async (e) => {
+  const { lat, lng } = e.latlng;
+  try {
+    const parcelUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?lat=${lat}&lon=${lng}`;
+    const pResp = await fetch(parcelUrl);
+    const pData = await pResp.json();
+    if (!(pData.features && pData.features.length)) return;
+
+    const parcel = pData.features[0];
+    const props = parcel.properties || {};
+
+    if (parcelLayer) map.removeLayer(parcelLayer);
+    parcelLayer = L.geoJSON(parcel, {
+      style: { color: '#ff0000', weight: 2, fillOpacity: 0.2 }
+    }).addTo(map);
+
+    // Adresse à partir du point sélectionné
+    const revUrl = `https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}&limit=1`;
+    let address = '';
+    try {
+      const rResp = await fetch(revUrl);
+      const rData = await rResp.json();
+      if (rData.features && rData.features.length) {
+        address = rData.features[0].properties.label;
+      }
+    } catch (err) {
+      console.error('Reverse geocode error', err);
+    }
+
+    const ref = props.id || `${props.section || ''}${props.numero || ''}`;
+    const area = props.contenance ? `${props.contenance} m²` : '';
+
+    const content = `<strong>Parcelle ${ref}</strong><br>${address}<br>Superficie : ${area}`;
+    parcelLayer.bindPopup(content).openPopup();
+    info.innerHTML = content;
+  } catch (err) {
+    console.error(err);
+
   }
 });
