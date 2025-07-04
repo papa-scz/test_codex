@@ -7,8 +7,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap'
 }).addTo(map);
 
+
 // Couche des parcelles cadastrales
 L.tileLayer('https://cadastre.openstreetmap.fr/tiles/parcelles/{z}/{x}/{y}.png', {
+
   maxZoom: 20,
   opacity: 0.7,
   attribution: '&copy; Cadastre'
@@ -16,12 +18,14 @@ L.tileLayer('https://cadastre.openstreetmap.fr/tiles/parcelles/{z}/{x}/{y}.png',
 
 const form = document.getElementById('searchForm');
 const input = document.getElementById('addressInput');
+
 const info = document.getElementById('info');
 
 let marker;
 let parcelLayer;
 
 // Recherche d'adresse
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const query = encodeURIComponent(input.value);
@@ -34,6 +38,7 @@ form.addEventListener('submit', async (e) => {
       alert('Adresse introuvable');
       return;
     }
+
     const feature = data.features[0];
     const [lng, lat] = feature.geometry.coordinates;
     const label = feature.properties.label;
@@ -85,5 +90,6 @@ map.on('click', async (e) => {
     info.innerHTML = content;
   } catch (err) {
     console.error(err);
+
   }
 });
